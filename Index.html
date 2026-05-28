@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stableford Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green-dark: #1a2e1a;
+            --green-mid: #2d5a2d;
+            --green-bright: #4a9e4a;
+            --cream: #faf8f3;
+            --text-dark: #1a1a1a;
+            --text-light: #888;
+            --accent: #c8a84b;
+            --accent-dark: #a88a3a;
+            --red: #c0392b;
+            --p1-color: #2d5a2d;
+            --p2-color: #2980b9;
+            --shadow-lg: 0 8px 48px rgba(0,0,0,0.18);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--green-dark);
+            min-height: 100vh;
+            color: var(--text-dark);
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(74,158,74,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(45,90,45,0.3) 0%, transparent 50%);
+            padding-bottom: 60px;
+        }
+        header { text-align: center; padding: 28px 16px 14px; }
+        header h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.7rem, 6vw, 3rem);
+            color: var(--cream);
+            letter-spacing: -0.02em;
+        }
+        header h1 span { color: var(--accent); }
+        .divider { width: 60px; height: 2px; background: var(--accent); margin: 10px auto; opacity: 0.7; }
+
+        .container { max-width: 980px; margin: 0 auto; padding: 0 12px; }
+
+        .setup-card {
+            background: var(--cream);
+            border-radius: 16px;
+            padding: 18px 16px 16px;
+            margin-bottom: 14px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+        .setup-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--green-mid), var(--accent), var(--green-bright));
+            border-radius: 16px 16px 0 0;
+        }
+        .setup-card.player2::before {
+            background: linear-gradient(90deg, var(--p2-color), var(--accent), #5dade2);
+        }
+        .card-title {
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.12em; color: var(--text-light); margin-bottom: 12px;
+        }
+        .card-title.p2 { color: var(--p2-color); }
+
+        .setup-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 11px;
+            align-items: end;
+        }
+        @media (min-width: 560px) { .setup-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 760px) {
+            .player-grid { grid-template-columns: repeat(4, 1fr); }
+            .course-grid { grid-template-columns: repeat(5, 1fr); }
+        }
+
+        .field-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.67rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); }
+
+        select, input[type="number"], input[type="text"], input[type="date"] {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            padding: 11px 12px;
+            border: 2px solid #e0ddd6;
+            border-radius: 10px;
+            outline: none;
+            width: 100%;
+            min-height: 46px;
+            background: white;
+            color: var(--text-dark);
+        }
+        select:focus, input:focus { border-color: var(--green-bright); }
+
+        .hcp-badge {
+            background: var(--green-dark); color: var(--accent); border-radius: 10px;
+            padding: 11px; font-family: 'DM Mono', monospace; font-size: 1.2rem;
+            text-align: center; min-height: 46px; display: flex; align-items: center; justify-content: center;
+        }
+        .hcp-badge.p2 { background: var(--p2-color); color: white; }
+
+        /* ── Competition mode tabs ─────────────────────────── */
+        .mode-tabs {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+            margin-bottom: 14px;
+            background: rgba(255,255,255,0.06);
+            padding: 5px; border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .mode-tab {
+            padding: 11px 6px; text-align: center; cursor: pointer;
+            border-radius: 9px; font-size: 0.78rem; font-weight: 600;
+            color: rgba(255,255,255,0.7); user-select: none;
+            -webkit-user-select: none; touch-action: manipulation;
+            transition: background 0.15s, color 0.15s;
+            line-height: 1.2;
+        }
+        .mode-tab .mt-icon { display: block; font-size: 1.15rem; margin-bottom: 2px; }
+        .mode-tab.active {
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            color: var(--green-dark);
+            box-shadow: 0 3px 12px rgba(200,168,75,0.3);
+        }
+
+        .scorecard { background: var(--cream); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-lg); margin-bottom: 14px; }
+        .scorecard-header {
+            background: var(--green-dark); padding: 13px 16px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 8px;
+        }
+        .scorecard-header h2 { font-family: 'Playfair Display', serif; color: var(--cream); font-size: 1rem; }
+        .badge {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: var(--accent); padding: 5px 10px; border-radius: 8px;
+            font-family: 'DM Mono', monospace; font-size: 0.75rem;
+        }
+        .btn-reset {
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+            color: white; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+            font-family: 'DM Sans', sans-serif; font-size: 0.8rem; min-height: 34px;
+            transition: background 0.15s;
+        }
+        .btn-reset:active { background: rgba(255,255,255,0.18); }
+
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        table { width: 100%; border-collapse: collapse; min-width: 380px; }
+        th {
+            background: var(--green-mid); color: white; padding: 9px 4px;
+            font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+        }
+        th.p1-th { background: var(--p1-color); }
+        th.p2-th { background: var(--p2-color); }
+        td { padding: 7px 3px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        .hole-num { font-family: 'DM Mono', monospace; font-weight: 700; color: var(--green-mid); text-align: left; padding-left: 12px; }
+        .si-cell { color: var(--text-light); font-size: 0.82rem; }
+        .extra-cell { font-family: 'DM Mono', monospace; font-weight: 700; color: var(--accent-dark); font-size: 0.85rem; }
+        .pts-cell { font-family: 'DM Mono', monospace; font-weight: 700; font-size: 0.98rem; min-width: 30px; }
+        .net-cell { font-family: 'DM Mono', monospace; color: var(--text-light); font-size: 0.78rem; }
+        .mp-result { font-family: 'DM Mono', monospace; font-weight: 800; font-size: 0.85rem; }
+        .mp-result.win-p1 { color: var(--p1-color); }
+        .mp-result.win-p2 { color: var(--p2-color); }
+        .mp-result.halve { color: var(--text-light); }
+        .mp-status-cell { padding: 6px 4px; }
+        .mp-status-badge {
+            display: inline-block;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.72rem; font-weight: 700;
+            padding: 5px 9px; border-radius: 7px;
+            color: #fff; white-space: nowrap;
+            min-width: 44px; text-align: center;
+            line-height: 1; letter-spacing: 0.03em;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+        }
+        .mp-status-badge.as { background: #888; }
+        .mp-status-badge.p1 { background: var(--p1-color); }
+        .mp-status-badge.p2 { background: var(--p2-color); }
+        .mp-status-badge.empty { background: transparent; color: #bbb; box-shadow: none; }
+
+        .stepper { display: flex; align-items: center; gap: 2px; justify-content: center; }
+        .step-btn {
+            width: 28px; height: 30px; border: none; border-radius: 6px;
+            background: var(--green-mid); color: white; font-size: 1.05rem; font-weight: bold;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: background 0.12s;
+            user-select: none; -webkit-user-select: none; touch-action: manipulation;
+        }
+        .step-btn.p2-step { background: var(--p2-color); }
+        .step-btn:active { background: var(--green-bright); }
+        .step-btn.p2-step:active { background: #5dade2; }
+
+        .slagen-input {
+            font-family: 'DM Mono', monospace;
+            width: 36px; padding: 5px 3px; text-align: center;
+            border: 2px solid #ddd; border-radius: 6px; outline: none;
+            font-weight: 600; font-size: 15px; min-height: 30px;
+            -moz-appearance: textfield;
+        }
+        .slagen-input::-webkit-inner-spin-button,
+        .slagen-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+        .slagen-input:focus { border-color: var(--green-bright); background: #fff; }
+        .filled { background: #f0faf0 !important; border-color: var(--green-bright) !important; }
+        .filled.p2-filled { background: #ebf3fa !important; border-color: var(--p2-color) !important; }
+
+        .summary-card { background: var(--cream); border-radius: 16px; padding: 20px 16px; box-shadow: var(--shadow-lg); margin-bottom: 14px; }
+        .summary-card h2 { font-family: 'Playfair Display', serif; color: var(--green-dark); font-size: 1.2rem; }
+
+        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 11px; margin-top: 14px; }
+        @media (min-width: 480px) { .summary-grid { grid-template-columns: repeat(4, 1fr); } }
+
+        .summary-item { background: white; border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid #eee; }
+        .summary-item .val { font-family: 'Playfair Display', serif; font-size: 1.8rem; color: var(--green-dark); font-weight: 900; line-height: 1.1; }
+        .summary-item .lbl { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); margin-top: 4px; }
+        .summary-item.highlight { background: var(--green-dark); }
+        .summary-item.highlight .val { color: var(--accent); }
+        .summary-item.highlight .lbl { color: rgba(255,255,255,0.5); }
+
+        /* ── Duel score banner (2 spelers naast elkaar) ───── */
+        .duel-banner {
+            display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px;
+            align-items: center; margin-top: 14px;
+            background: linear-gradient(135deg, #f5f3ee 0%, #fff 100%);
+            border-radius: 14px; padding: 16px 14px;
+            border: 1px solid #eee;
+        }
+        .duel-player { text-align: center; }
+        .duel-player .dp-name { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); }
+        .duel-player .dp-score { font-family: 'Playfair Display', serif; font-size: 2.4rem; font-weight: 900; line-height: 1; margin-top: 4px; }
+        .duel-player.p1 .dp-score { color: var(--p1-color); }
+        .duel-player.p2 .dp-score { color: var(--p2-color); }
+        .duel-vs {
+            font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 700;
+            color: var(--text-light); padding: 0 6px;
+        }
+        .duel-lead {
+            grid-column: 1 / -1; text-align: center; margin-top: 8px;
+            font-size: 0.92rem; color: var(--green-dark); font-weight: 600;
+        }
+        .duel-lead .lead-name { font-weight: 800; color: var(--accent-dark); }
+
+        /* ── Match play status banner ─────────────────────── */
+        .mp-banner {
+            background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+            border-radius: 14px; padding: 18px 16px; margin-top: 14px; text-align: center;
+            color: white;
+        }
+        .mp-banner .mp-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(255,255,255,0.65); }
+        .mp-banner .mp-status-big {
+            font-family: 'Playfair Display', serif; font-size: 2.2rem; font-weight: 900; line-height: 1;
+            color: var(--accent); margin: 6px 0 4px;
+        }
+        .mp-banner .mp-leader { font-size: 1rem; color: rgba(255,255,255,0.95); font-weight: 600; }
+        .mp-banner .mp-final { font-size: 0.82rem; color: var(--green-bright); margin-top: 6px; font-weight: 700; letter-spacing: 0.05em; }
+        .mp-banner.dormie { background: linear-gradient(135deg, #5a3a1a 0%, #8a5a2a 100%); }
+        .mp-banner.closed { background: linear-gradient(135deg, #1a3a1a 0%, #2d5a2d 100%); }
+
+        .mp-progress-wrap { margin-top: 14px; background: white; border-radius: 12px; padding: 12px 10px; border: 1px solid #eee; }
+        .mp-progress-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); margin-bottom: 8px; text-align: center; }
+        .mp-progress-svg { width: 100%; height: 130px; display: block; }
+
+        .percentile-banner {
+            background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+            border-radius: 12px; padding: 16px 18px; margin-top: 14px; text-align: center;
+        }
+        .percentile-banner .pct-row { display: flex; align-items: baseline; justify-content: center; gap: 6px; flex-wrap: wrap; }
+        .percentile-banner .pct-label { font-size: 0.95rem; color: rgba(255,255,255,0.8); }
+        .percentile-banner .pct-num { font-family: 'Playfair Display', serif; font-size: 2.4rem; color: var(--accent); font-weight: 900; line-height: 1; }
+        .percentile-banner .pct-sub { font-size: 0.75rem; color: rgba(255,255,255,0.45); margin-top: 4px; }
+
+        .btn-download {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 15px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            color: var(--green-dark); border: none; border-radius: 12px;
+            font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700;
+            cursor: pointer; margin-top: 14px;
+            box-shadow: 0 4px 16px rgba(200,168,75,0.35);
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .btn-download:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(200,168,75,0.25); }
+        .btn-download:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .pts-0 { color: var(--red); }
+        .pts-1 { color: #888; }
+        .pts-2 { color: var(--text-dark); }
+        .pts-3 { color: var(--green-bright); }
+        .pts-4 { color: var(--accent); }
+
+        .breakdown-title {
+            font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--text-light); margin-top: 16px; margin-bottom: 8px;
+        }
+        .breakdown-grid {
+            display: flex; gap: 7px; overflow-x: auto;
+            -webkit-overflow-scrolling: touch; padding-bottom: 2px;
+        }
+        .breakdown-item {
+            flex: 1 1 0; min-width: 52px;
+            background: white; border-radius: 10px;
+            padding: 10px 6px; text-align: center; border: 2px solid #eee;
+        }
+        .breakdown-item .bd-icon { font-size: 1rem; line-height: 1.2; }
+        .breakdown-item .bd-count {
+            font-family: 'Playfair Display', serif; font-size: 1.5rem;
+            font-weight: 900; line-height: 1.1; margin: 1px 0;
+        }
+        .breakdown-item .bd-label {
+            font-size: 0.56rem; text-transform: uppercase;
+            letter-spacing: 0.07em; color: var(--text-light);
+        }
+        .bd-eagle  { border-color: #c8a84b; }
+        .bd-eagle  .bd-count { color: var(--accent-dark); }
+        .bd-birdie { border-color: var(--green-bright); }
+        .bd-birdie .bd-count { color: var(--green-mid); }
+        .bd-par    { border-color: #ccc; }
+        .bd-par    .bd-count { color: var(--text-dark); }
+        .bd-bogey  { border-color: #e8a050; }
+        .bd-bogey  .bd-count { color: #b86820; }
+        .bd-double { border-color: #e07060; }
+        .bd-double .bd-count { color: var(--red); }
+        .bd-worse  { border-color: #a03030; }
+        .bd-worse  .bd-count { color: #8b0000; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Stableford <span>Calculator</span></h1>
+    <div class="divider"></div>
+</header>
+
+<div class="container">
+
+    <!-- Competition mode tabs -->
+    <div class="mode-tabs" id="modeTabs">
+        <div class="mode-tab active" data-mode="solo" onclick="setCompMode('solo')">
+            <span class="mt-icon">&#9971;</span>Solo
+        </div>
+        <div class="mode-tab" data-mode="duel" onclick="setCompMode('duel')">
+            <span class="mt-icon">&#9876;</span>Stableford Duel
+        </div>
+        <div class="mode-tab" data-mode="matchplay" onclick="setCompMode('matchplay')">
+            <span class="mt-icon">&#127942;</span>Match Play
+        </div>
+    </div>
+
+    <!-- Gedeelde match-info: geldt voor beide spelers -->
+    <div class="setup-card">
+        <div class="card-title">Match informatie</div>
+        <div class="setup-grid course-grid">
+            <div class="field-group">
+                <label>Speeldatum</label>
+                <input type="date" id="playDate">
+            </div>
+            <div class="field-group">
+                <label>Golfclub</label>
+                <select id="club" onchange="populateModes(); renderTable();">
+                    <option value="Nuclea">Nuclea</option>
+                    <option value="Steenhoven">Steenhoven</option>
+                    <option value="Kempense">Kempense</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Baan</label>
+                <select id="mode" onchange="populateTees(); renderTable();">
+                    <option value="full 18">Full 18</option>
+                    <option value="front 9">Front 9</option>
+                    <option value="back 9">Back 9</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player 1 -->
+    <div class="setup-card">
+        <div class="card-title" id="p1CardTitle">Speler</div>
+        <div class="setup-grid player-grid">
+            <div class="field-group">
+                <label>Voornaam</label>
+                <input type="text" id="firstName" placeholder="Rory" autocomplete="given-name">
+            </div>
+            <div class="field-group">
+                <label>Achternaam</label>
+                <input type="text" id="lastName" placeholder="McIlroy" autocomplete="family-name">
+            </div>
+            <div class="field-group">
+                <label>Nationaliteit</label>
+                <select id="nationality">
+                    <option value="be">🇧🇪 België</option>
+                    <option value="nl">🇳🇱 Nederland</option>
+                    <option value="de">🇩🇪 Duitsland</option>
+                    <option value="fr">🇫🇷 Frankrijk</option>
+                    <option value="gb">🇬🇧 Groot-Brittannië</option>
+                    <option value="ie">🇮🇪 Ierland</option>
+                    <option value="lu">🇱🇺 Luxemburg</option>
+                    <option value="us">🇺🇸 VS</option>
+                    <option value="au">🇦🇺 Australië</option>
+                    <option value="es">🇪🇸 Spanje</option>
+                    <option value="it">🇮🇹 Italië</option>
+                    <option value="pt">🇵🇹 Portugal</option>
+                    <option value="se">🇸🇪 Zweden</option>
+                    <option value="dk">🇩🇰 Denemarken</option>
+                    <option value="no">🇳🇴 Noorwegen</option>
+                    <option value="za">🇿🇦 Zuid-Afrika</option>
+                    <option value="ca">🇨🇦 Canada</option>
+                    <option value="jp">🇯🇵 Japan</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Exact Handicap</label>
+                <input type="number" id="hcp" value="36.0" step="0.1" inputmode="decimal" oninput="renderTable()">
+            </div>
+            <div class="field-group">
+                <label>Teebox</label>
+                <select id="tee" onchange="renderTable()">
+                    <option value="oranje">Oranje</option>
+                    <option value="rood">Rood</option>
+                    <option value="geel">Geel</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Speelhandicap</label>
+                <div class="hcp-badge" id="phcp-val">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player 2 (hidden in solo mode) -->
+    <div class="setup-card player2" id="player2Card" style="display:none;">
+        <div class="card-title p2">Speler 2 / Team 2</div>
+        <div class="setup-grid player-grid">
+            <div class="field-group">
+                <label>Voornaam</label>
+                <input type="text" id="firstName2" placeholder="Tiger" autocomplete="off">
+            </div>
+            <div class="field-group">
+                <label>Achternaam</label>
+                <input type="text" id="lastName2" placeholder="Woods" autocomplete="off">
+            </div>
+            <div class="field-group">
+                <label>Nationaliteit</label>
+                <select id="nationality2">
+                    <option value="us">🇺🇸 VS</option>
+                    <option value="be">🇧🇪 België</option>
+                    <option value="nl">🇳🇱 Nederland</option>
+                    <option value="de">🇩🇪 Duitsland</option>
+                    <option value="fr">🇫🇷 Frankrijk</option>
+                    <option value="gb">🇬🇧 Groot-Brittannië</option>
+                    <option value="ie">🇮🇪 Ierland</option>
+                    <option value="lu">🇱🇺 Luxemburg</option>
+                    <option value="au">🇦🇺 Australië</option>
+                    <option value="es">🇪🇸 Spanje</option>
+                    <option value="it">🇮🇹 Italië</option>
+                    <option value="pt">🇵🇹 Portugal</option>
+                    <option value="se">🇸🇪 Zweden</option>
+                    <option value="dk">🇩🇰 Denemarken</option>
+                    <option value="no">🇳🇴 Noorwegen</option>
+                    <option value="za">🇿🇦 Zuid-Afrika</option>
+                    <option value="ca">🇨🇦 Canada</option>
+                    <option value="jp">🇯🇵 Japan</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Exact Handicap</label>
+                <input type="number" id="hcp2" value="36.0" step="0.1" inputmode="decimal" oninput="renderTable()">
+            </div>
+            <div class="field-group">
+                <label>Teebox</label>
+                <select id="tee2" onchange="renderTable()">
+                    <option value="oranje">Oranje</option>
+                    <option value="rood">Rood</option>
+                    <option value="geel">Geel</option>
+                </select>
+            </div>
+            <div class="field-group">
+                <label>Speelhandicap</label>
+                <div class="hcp-badge p2" id="phcp2-val">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cardContainer"></div>
+
+    <!-- SOLO summary -->
+    <div class="summary-card" id="summaryCard" style="display:none;">
+        <h2>Resultaten</h2>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="val" id="sumOut">—</div>
+                <div class="lbl">Punten Uit</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="sumIn">—</div>
+                <div class="lbl">Punten In</div>
+            </div>
+            <div class="summary-item highlight">
+                <div class="val" id="sumTotal">—</div>
+                <div class="lbl">Totaal Punten</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="sumHoles">—</div>
+                <div class="lbl">Holes Gespeeld</div>
+            </div>
+        </div>
+        <div class="breakdown-title">Score verdeling</div>
+        <div class="breakdown-grid" id="breakdownGrid" style="display:none;">
+            <div class="breakdown-item bd-eagle"><div class="bd-icon">🦅</div><div class="bd-count" id="bdEagle">0</div><div class="bd-label">Eagle+</div></div>
+            <div class="breakdown-item bd-birdie"><div class="bd-icon">🐦</div><div class="bd-count" id="bdBirdie">0</div><div class="bd-label">Birdie</div></div>
+            <div class="breakdown-item bd-par"><div class="bd-icon">&#9711;</div><div class="bd-count" id="bdPar">0</div><div class="bd-label">Par</div></div>
+            <div class="breakdown-item bd-bogey"><div class="bd-icon">+1</div><div class="bd-count" id="bdBogey">0</div><div class="bd-label">Bogey</div></div>
+            <div class="breakdown-item bd-double"><div class="bd-icon">+2</div><div class="bd-count" id="bdDouble">0</div><div class="bd-label">Dubbel</div></div>
+            <div class="breakdown-item bd-worse"><div class="bd-icon">+3+</div><div class="bd-count" id="bdWorse">0</div><div class="bd-label">Erger</div></div>
+        </div>
+
+        <div class="percentile-banner" id="percentileBanner" style="display:none;">
+            <div class="pct-row">
+                <span class="pct-label">Beter dan</span>
+                <span class="pct-num" id="pctNum">—</span>
+                <span class="pct-label">% van de spelers</span>
+            </div>
+            <div class="pct-sub">Gebaseerd op gemiddelde clubcompetitie verdeling</div>
+        </div>
+        <button class="btn-download" id="btnDownload" onclick="downloadPDF()">
+            &#8659; Scorekaart downloaden als PDF
+        </button>
+    </div>
+
+    <!-- DUEL summary -->
+    <div class="summary-card" id="duelSummaryCard" style="display:none;">
+        <h2>Stableford Duel</h2>
+        <div class="duel-banner">
+            <div class="duel-player p1">
+                <div class="dp-name" id="duelP1Name">Speler 1</div>
+                <div class="dp-score" id="duelP1Score">0</div>
+            </div>
+            <div class="duel-vs">VS</div>
+            <div class="duel-player p2">
+                <div class="dp-name" id="duelP2Name">Speler 2</div>
+                <div class="dp-score" id="duelP2Score">0</div>
+            </div>
+            <div class="duel-lead" id="duelLead">—</div>
+        </div>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="val" id="duelHoles">—</div>
+                <div class="lbl">Holes Gespeeld</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="duelDiff">—</div>
+                <div class="lbl">Verschil</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="duelP1Out">—</div>
+                <div class="lbl" id="duelP1OutLbl">Sp.1 Uit/In</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="duelP2Out">—</div>
+                <div class="lbl" id="duelP2OutLbl">Sp.2 Uit/In</div>
+            </div>
+        </div>
+        <button class="btn-download" id="btnDownloadDuel" onclick="downloadDuelPDF()">
+            &#8659; Duel scorekaart downloaden als PDF
+        </button>
+    </div>
+
+    <!-- MATCH PLAY summary -->
+    <div class="summary-card" id="mpSummaryCard" style="display:none;">
+        <h2>Match Play</h2>
+        <div class="mp-banner" id="mpBanner">
+            <div class="mp-label">Status</div>
+            <div class="mp-status-big" id="mpStatusBig">ALL SQUARE</div>
+            <div class="mp-leader" id="mpLeader">—</div>
+            <div class="mp-final" id="mpFinal" style="display:none;"></div>
+        </div>
+
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="val" id="mpWinsP1">0</div>
+                <div class="lbl" id="mpWinsP1Lbl">Sp.1 Holes</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="mpWinsP2">0</div>
+                <div class="lbl" id="mpWinsP2Lbl">Sp.2 Holes</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="mpHalved">0</div>
+                <div class="lbl">Halved</div>
+            </div>
+            <div class="summary-item">
+                <div class="val" id="mpRemaining">—</div>
+                <div class="lbl">Te Spelen</div>
+            </div>
+        </div>
+
+        <div class="mp-progress-wrap">
+            <div class="mp-progress-title">Verloop van de match</div>
+            <svg class="mp-progress-svg" id="mpProgressSvg" viewBox="0 0 600 130" preserveAspectRatio="none"></svg>
+        </div>
+
+        <button class="btn-download" id="btnDownloadMp" onclick="downloadMatchPlayPDF()">
+            &#8659; Match Play kaart downloaden als PDF
+        </button>
+    </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script>
+
+const courseData = {
+    "Nuclea": {
+        "full 18": {
+            "name": "Nuclea Mol (18 Holes)",
+            "par": [3,4,4,3,5,4,3,4,3, 3,4,4,3,5,4,3,4,3],
+            "si":  [15,11,3,17,5,9,1,7,13, 16,12,4,18,6,10,2,8,14],
+            "tees": {
+                "oranje": {"cr":59.0,"sr":90,"par_total":66,"color":"#f5a623"},
+                "rood":   {"cr":61.0,"sr":99,"par_total":66,"color":"#c0392b"},
+                "geel":   {"cr":61.7,"sr":112,"par_total":66,"color":"#f1c40f"}
+            }
+        },
+        "front 9": {
+            "name": "Nuclea Mol (Front 9)",
+            "par": [3,4,4,3,5,4,3,4,3],
+            "si":  [8,6,2,9,3,5,1,4,7],
+            "tees": {
+                "oranje": {"cr":29.5,"sr":90,"par_total":33,"color":"#f5a623"},
+                "rood":   {"cr":30.5,"sr":99,"par_total":33,"color":"#c0392b"},
+                "geel":   {"cr":30.8,"sr":112,"par_total":33,"color":"#f1c40f"}
+            }
+        },
+        "back 9": {
+            "name": "Nuclea Mol (Back 9)",
+            "par": [3,4,4,3,5,4,3,4,3],
+            "si":  [8,6,2,9,3,5,1,4,7],
+            "tees": {
+                "oranje": {"cr":29.5,"sr":90,"par_total":33,"color":"#f5a623"},
+                "rood":   {"cr":30.5,"sr":99,"par_total":33,"color":"#c0392b"},
+                "geel":   {"cr":30.9,"sr":112,"par_total":33,"color":"#f1c40f"}
+            }
+        }
+    },
+    "Steenhoven": {
+        "full 18": {
+            "name": "Steenhoven (18 Holes)",
+            "par": [5,4,5,4,4,4,3,4,4, 3,5,4,5,4,4,3,4,3],
+            "si":  [11,5,1,17,7,3,15,9,13, 10,2,18,4,8,16,6,12,14],
+            "tees": {
+                "rood":  {"cr":66.3,"sr":118,"par_total":72,"color":"#c0392b"},
+                "blauw": {"cr":67.9,"sr":121,"par_total":72,"color":"#2980b9"},
+                "geel":  {"cr":70.1,"sr":126,"par_total":72,"color":"#f1c40f"},
+                "wit":   {"cr":71.3,"sr":129,"par_total":72,"color":"#ecf0f1"}
+            }
+        },
+        "front 9": {
+            "name": "Steenhoven (Front 9)",
+            "par": [5,4,5,4,4,4,3,4,4],
+            "si":  [3,9,1,6,7,4,8,5,2],
+            "tees": {
+                "rood":  {"cr":34.3,"sr":118,"par_total":37,"color":"#c0392b"},
+                "blauw": {"cr":35.2,"sr":122,"par_total":37,"color":"#2980b9"},
+                "geel":  {"cr":36.5,"sr":127,"par_total":37,"color":"#f1c40f"},
+                "wit":   {"cr":37.4,"sr":131,"par_total":37,"color":"#ecf0f1"}
+            }
+        },
+        "back 9": {
+            "name": "Steenhoven (Back 9)",
+            "par": [3,5,4,5,4,4,3,4,3],
+            "si":  [9,1,5,7,6,3,4,2,8],
+            "tees": {
+                "rood":  {"cr":32.1,"sr":118,"par_total":35,"color":"#c0392b"},
+                "blauw": {"cr":32.7,"sr":120,"par_total":35,"color":"#2980b9"},
+                "geel":  {"cr":33.5,"sr":124,"par_total":35,"color":"#f1c40f"},
+                "wit":   {"cr":34.4,"sr":128,"par_total":35,"color":"#ecf0f1"}
+            }
+        }
+    },
+    "Kempense": {
+        "full 18": {
+            "name": "Kempense (18 Holes)",
+            "par": [5,3,4,4,4,3,4,3,5, 4,4,5,4,3,4,5,3,5],
+            "si":  [4,16,2,14,18,12,6,10,8, 7,11,5,1,15,13,9,17,3],
+            "tees": {
+                "oranje": {"cr":62.9,"sr":104,"par_total":72,"color":"#f5a623"},
+                "rood":   {"cr":65.9,"sr":110,"par_total":72,"color":"#c0392b"},
+                "blauw":  {"cr":67.5,"sr":115,"par_total":72,"color":"#2980b9"},
+                "geel":   {"cr":69.6,"sr":118,"par_total":72,"color":"#f1c40f"},
+                "wit":    {"cr":71.0,"sr":127,"par_total":72,"color":"#ecf0f1"},
+                "zwart":  {"cr":71.2,"sr":127,"par_total":72,"color":"#2c3e50"}
+            }
+        },
+        "front 9": {
+            "name": "Kempense (Front 9)",
+            "par": [5,3,4,4,4,3,4,3,5],
+            "si":  [2,8,1,7,9,6,3,5,4],
+            "tees": {
+                "oranje": {"cr":30.1,"sr":93,"par_total":35,"color":"#f5a623"},
+                "rood":   {"cr":31.4,"sr":99,"par_total":35,"color":"#c0392b"},
+                "blauw":  {"cr":32.2,"sr":104,"par_total":35,"color":"#2980b9"},
+                "geel":   {"cr":33.1,"sr":114,"par_total":35,"color":"#f1c40f"},
+                "wit":    {"cr":33.8,"sr":126,"par_total":35,"color":"#ecf0f1"},
+                "zwart":  {"cr":34.0,"sr":127,"par_total":35,"color":"#2c3e50"}
+            }
+        },
+        "back 9": {
+            "name": "Kempense (Back 9)",
+            "par": [4,4,5,4,3,4,5,3,5],
+            "si":  [4,6,3,1,8,7,5,9,2],
+            "tees": {
+                "oranje": {"cr":32.8,"sr":114,"par_total":37,"color":"#f5a623"},
+                "rood":   {"cr":34.5,"sr":121,"par_total":37,"color":"#c0392b"},
+                "blauw":  {"cr":35.3,"sr":125,"par_total":37,"color":"#2980b9"},
+                "geel":   {"cr":36.5,"sr":122,"par_total":37,"color":"#f1c40f"},
+                "wit":    {"cr":37.2,"sr":127,"par_total":37,"color":"#ecf0f1"},
+                "zwart":  {"cr":37.2,"sr":127,"par_total":37,"color":"#2c3e50"}
+            }
+        }
+    }
+};
+
+// ── Globale state ──────────────────────────────────────────────────────────
+let compMode = 'solo';  // 'solo' | 'duel' | 'matchplay'
+// laatste match play status voor PDF
+let mpHistory = [];     // array van { hole, p1Net, p2Net, result(-1|0|1), status }
+
+// ── Percentile helpers ──────────────────────────────────────────────────────
+function erf(x) {
+    const t = 1 / (1 + 0.3275911 * Math.abs(x));
+    const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+    const v = 1 - p * Math.exp(-x * x);
+    return x >= 0 ? v : -v;
+}
+function normalCDF(x, mean, std) {
+    return 0.5 * (1 + erf((x - mean) / (std * Math.sqrt(2))));
+}
+function getBetterThanPercent(score, numHoles) {
+    const mean = numHoles === 18 ? 35 : 18;
+    const std  = numHoles === 18 ? 10 :  7;
+    return Math.min(99, Math.max(1, Math.round(normalCDF(score, mean, std) * 100)));
+}
+
+// ── Compet mode wisselen ───────────────────────────────────────────────────
+function setCompMode(m) {
+    compMode = m;
+    document.querySelectorAll('.mode-tab').forEach(el => {
+        el.classList.toggle('active', el.dataset.mode === m);
+    });
+    document.getElementById('player2Card').style.display = (m === 'solo') ? 'none' : 'block';
+    document.getElementById('p1CardTitle').textContent   = (m === 'solo') ? 'Speler' : 'Speler 1 / Team 1';
+    // verberg alle summaries; updateTotals() toont de juiste
+    document.getElementById('summaryCard').style.display     = 'none';
+    document.getElementById('duelSummaryCard').style.display = 'none';
+    document.getElementById('mpSummaryCard').style.display   = 'none';
+    renderTable();
+}
+
+// ── Dropdowns ───────────────────────────────────────────────────────────────
+function populateModes() { populateTees(); }
+
+function populateTees() {
+    const club = document.getElementById('club').value;
+    const mode = document.getElementById('mode').value;
+    if (!mode || !courseData[club] || !courseData[club][mode]) return;
+    const tees = Object.keys(courseData[club][mode].tees);
+
+    ['tee', 'tee2'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '';
+        tees.forEach(t => {
+            const o = document.createElement('option');
+            o.value = t;
+            o.textContent = t.charAt(0).toUpperCase() + t.slice(1);
+            sel.appendChild(o);
+        });
+        // bewaar vorige selectie indien nog geldig, anders eerste teebox
+        if (tees.includes(prev)) sel.value = prev;
+        else if (tees.length > 0) sel.value = tees[0];
+    });
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function calcPhcp(hcp, tee, n) {
+    const is9 = n === 9;
+    return Math.round(
+        is9
+            ? (hcp / 2 * (tee.sr / 113)) + (tee.cr - tee.par_total)
+            : (hcp * (tee.sr / 113)) + (tee.cr - tee.par_total)
+    );
+}
+function extraForHole(phcp, si, n) {
+    const base = Math.floor(phcp / n);
+    const rem  = phcp % n;
+    return base + (phcp >= 0 ? (si <= rem ? 1 : 0) : (si > (n + phcp) ? -1 : 0));
+}
+function playerNameFmt(fn, ln, fallback) {
+    if (fn && ln) return `${fn.charAt(0).toUpperCase()}. ${ln}`;
+    if (ln) return ln;
+    if (fn) return fn;
+    return fallback;
+}
+function playerShortName(fn, ln, fallback) {
+    return fn || ln || fallback;
+}
+
+// ── Main render ─────────────────────────────────────────────────────────────
+function renderTable() {
+    const club  = document.getElementById('club').value;
+    const mode  = document.getElementById('mode').value;
+    const teeN  = document.getElementById('tee').value;
+    const teeN2 = document.getElementById('tee2').value;
+    const hcp   = parseFloat(document.getElementById('hcp').value) || 0;
+    const hcp2  = parseFloat(document.getElementById('hcp2').value) || 0;
+    if (!mode || !teeN) return;
+
+    const gd   = courseData[club][mode];
+    const tee  = gd.tees[teeN];
+    const tee2 = gd.tees[teeN2] || tee;   // fallback als tee2 nog niet gevuld is
+    const n    = gd.par.length;
+    const phcp  = calcPhcp(hcp,  tee,  n);
+    const phcp2 = calcPhcp(hcp2, tee2, n);
+    document.getElementById('phcp-val').textContent  = phcp;
+    document.getElementById('phcp2-val').textContent = phcp2;
+
+    const p1Name = playerShortName(document.getElementById('firstName').value.trim(),
+                                   document.getElementById('lastName').value.trim(), 'Speler 1');
+    const p2Name = playerShortName(document.getElementById('firstName2').value.trim(),
+                                   document.getElementById('lastName2').value.trim(), 'Speler 2');
+
+    let rows = '';
+    let header = '';
+
+    if (compMode === 'solo') {
+        header = `<tr>
+            <th>Hole</th><th>Par</th><th>SI</th><th>Extra</th><th>Slagen</th><th>Punten</th>
+        </tr>`;
+        for (let i = 0; i < n; i++) {
+            const si    = gd.si[i];
+            const extra = extraForHole(phcp, si, n);
+            const hole  = (mode === 'back 9') ? (i + 10) : (i + 1);
+            rows += `<tr>
+                <td class="hole-num">${hole}</td>
+                <td>${gd.par[i]}</td>
+                <td class="si-cell">${si}</td>
+                <td class="extra-cell">${extra > 0 ? '+' + extra : extra}</td>
+                <td>
+                    <div class="stepper">
+                        <button class="step-btn" onclick="stepScore('s-${i}',-1)" type="button">&#8722;</button>
+                        <input type="number" class="slagen-input" id="s-${i}" inputmode="numeric" oninput="updateTotals()">
+                        <button class="step-btn" onclick="stepScore('s-${i}',1)" type="button">+</button>
+                    </div>
+                </td>
+                <td id="p-${i}" class="pts-cell">&#8212;</td>
+            </tr>`;
+        }
+    } else if (compMode === 'duel') {
+        header = `<tr>
+            <th>Hole</th><th>Par</th><th>SI</th>
+            <th class="p1-th">${escapeHtml(p1Name)} Slagen</th>
+            <th class="p1-th">Pts</th>
+            <th class="p2-th">${escapeHtml(p2Name)} Slagen</th>
+            <th class="p2-th">Pts</th>
+        </tr>`;
+        for (let i = 0; i < n; i++) {
+            const si    = gd.si[i];
+            const hole  = (mode === 'back 9') ? (i + 10) : (i + 1);
+            const ex1   = extraForHole(phcp,  si, n);
+            const ex2   = extraForHole(phcp2, si, n);
+            rows += `<tr>
+                <td class="hole-num">${hole}</td>
+                <td>${gd.par[i]}</td>
+                <td class="si-cell">${si}</td>
+                <td>
+                    <div class="stepper">
+                        <button class="step-btn" onclick="stepScore('s-${i}',-1)" type="button">&#8722;</button>
+                        <input type="number" class="slagen-input" id="s-${i}" inputmode="numeric" oninput="updateTotals()">
+                        <button class="step-btn" onclick="stepScore('s-${i}',1)" type="button">+</button>
+                    </div>
+                    <div class="net-cell">extra ${ex1>0?'+'+ex1:ex1}</div>
+                </td>
+                <td id="p-${i}" class="pts-cell">&#8212;</td>
+                <td>
+                    <div class="stepper">
+                        <button class="step-btn p2-step" onclick="stepScore('s2-${i}',-1)" type="button">&#8722;</button>
+                        <input type="number" class="slagen-input" id="s2-${i}" inputmode="numeric" oninput="updateTotals()">
+                        <button class="step-btn p2-step" onclick="stepScore('s2-${i}',1)" type="button">+</button>
+                    </div>
+                    <div class="net-cell">extra ${ex2>0?'+'+ex2:ex2}</div>
+                </td>
+                <td id="p2-${i}" class="pts-cell">&#8212;</td>
+            </tr>`;
+        }
+    } else { // matchplay
+        header = `<tr>
+            <th>Hole</th><th>Par</th><th>SI</th>
+            <th class="p1-th">${escapeHtml(p1Name)}<br><span style="font-size:.55rem;opacity:.7;">Bruto / Net</span></th>
+            <th class="p2-th">${escapeHtml(p2Name)}<br><span style="font-size:.55rem;opacity:.7;">Bruto / Net</span></th>
+            <th>Hole</th><th>Stand</th>
+        </tr>`;
+        for (let i = 0; i < n; i++) {
+            const si    = gd.si[i];
+            const hole  = (mode === 'back 9') ? (i + 10) : (i + 1);
+            rows += `<tr>
+                <td class="hole-num">${hole}</td>
+                <td>${gd.par[i]}</td>
+                <td class="si-cell">${si}</td>
+                <td>
+                    <div class="stepper">
+                        <button class="step-btn" onclick="stepScore('s-${i}',-1)" type="button">&#8722;</button>
+                        <input type="number" class="slagen-input" id="s-${i}" inputmode="numeric" oninput="updateTotals()">
+                        <button class="step-btn" onclick="stepScore('s-${i}',1)" type="button">+</button>
+                    </div>
+                    <div class="net-cell" id="net1-${i}">net —</div>
+                </td>
+                <td>
+                    <div class="stepper">
+                        <button class="step-btn p2-step" onclick="stepScore('s2-${i}',-1)" type="button">&#8722;</button>
+                        <input type="number" class="slagen-input" id="s2-${i}" inputmode="numeric" oninput="updateTotals()">
+                        <button class="step-btn p2-step" onclick="stepScore('s2-${i}',1)" type="button">+</button>
+                    </div>
+                    <div class="net-cell" id="net2-${i}">net —</div>
+                </td>
+                <td id="mpr-${i}" class="mp-result">—</td>
+                <td id="mps-${i}" class="mp-status-cell"><span class="mp-status-badge empty">—</span></td>
+            </tr>`;
+        }
+    }
+
+    const modeLabel = compMode === 'solo' ? 'Solo' : compMode === 'duel' ? 'Duel' : 'Match Play';
+
+    document.getElementById('cardContainer').innerHTML = `
+        <div class="scorecard">
+            <div class="scorecard-header">
+                <h2>Scorekaart &middot; ${modeLabel}</h2>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn-reset" onclick="resetScores()" type="button">&#8635; Wis scores</button>
+                    <div class="badge">${gd.name}</div>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>${header}</thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </div>`;
+
+    updateTotals();
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function stepScore(id, delta) {
+    const inp = document.getElementById(id);
+    const cur = parseInt(inp.value) || 0;
+    const nv  = Math.max(0, cur + delta);
+    inp.value = nv || '';
+    updateTotals();
+}
+
+function resetScores() {
+    const club = document.getElementById('club').value;
+    const mode = document.getElementById('mode').value;
+    if (!mode) return;
+    const n = courseData[club][mode].par.length;
+    for (let i = 0; i < n; i++) {
+        ['s-', 's2-'].forEach(pref => {
+            const inp = document.getElementById(`${pref}${i}`);
+            if (inp) { inp.value = ''; inp.classList.remove('filled', 'p2-filled'); }
+        });
+        const p  = document.getElementById(`p-${i}`);  if (p)  p.innerHTML  = '&#8212;';
+        const p2 = document.getElementById(`p2-${i}`); if (p2) p2.innerHTML = '&#8212;';
+        const n1 = document.getElementById(`net1-${i}`); if (n1) n1.textContent = 'net —';
+        const n2 = document.getElementById(`net2-${i}`); if (n2) n2.textContent = 'net —';
+        const mpr= document.getElementById(`mpr-${i}`); if (mpr){ mpr.textContent='—'; mpr.className='mp-result'; }
+        const mps= document.getElementById(`mps-${i}`); if (mps) mps.innerHTML = '<span class="mp-status-badge empty">—</span>';
+    }
+    document.getElementById('summaryCard').style.display     = 'none';
+    document.getElementById('duelSummaryCard').style.display = 'none';
+    document.getElementById('mpSummaryCard').style.display   = 'none';
+}
+
+// ── Update totals (router) ─────────────────────────────────────────────────
+function updateTotals() {
+    if (compMode === 'solo')      updateSoloTotals();
+    else if (compMode === 'duel') updateDuelTotals();
+    else                          updateMatchPlayTotals();
+}
+
+// ─── SOLO ───
+function updateSoloTotals() {
+    const club  = document.getElementById('club').value;
+    const mode  = document.getElementById('mode').value;
+    const phcp  = parseInt(document.getElementById('phcp-val').textContent);
+    if (!mode) return;
+    const gd   = courseData[club][mode];
+    const n    = gd.par.length;
+
+    let outP = 0, inP = 0, totalP = 0, played = 0;
+    let cEagle = 0, cBirdie = 0, cPar = 0, cBogey = 0, cDouble = 0, cWorse = 0;
+
+    for (let i = 0; i < n; i++) {
+        const inp = document.getElementById(`s-${i}`);
+        if (!inp) continue;
+        const val = parseInt(inp.value);
+        if (!isNaN(val) && val > 0) {
+            inp.classList.add('filled');
+            played++;
+            const si    = gd.si[i];
+            const extra = extraForHole(phcp, si, n);
+            const pts   = Math.max(0, 2 + (gd.par[i] + extra) - val);
+            const cell  = document.getElementById(`p-${i}`);
+            cell.textContent = pts;
+            cell.className   = 'pts-cell pts-' + (pts > 4 ? 4 : pts);
+            totalP += pts;
+            if (mode === 'full 18') { if (i < 9) outP += pts; else inP += pts; }
+            else if (mode === 'front 9') outP += pts;
+            else inP += pts;
+
+            const diff = val - gd.par[i];
+            if      (diff <= -2) cEagle++;
+            else if (diff === -1) cBirdie++;
+            else if (diff ===  0) cPar++;
+            else if (diff ===  1) cBogey++;
+            else if (diff ===  2) cDouble++;
+            else                  cWorse++;
+        } else {
+            inp.classList.remove('filled');
+            document.getElementById(`p-${i}`).innerHTML = '&#8212;';
+        }
+    }
+
+    const card = document.getElementById('summaryCard');
+    if (played === 0) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    document.getElementById('sumOut').textContent   = outP;
+    document.getElementById('sumIn').textContent    = inP;
+    document.getElementById('sumTotal').textContent = totalP;
+    document.getElementById('sumHoles').textContent = `${played}/${n}`;
+
+    const bdGrid = document.getElementById('breakdownGrid');
+    bdGrid.style.display = 'flex';
+    document.getElementById('bdEagle').textContent  = cEagle;
+    document.getElementById('bdBirdie').textContent = cBirdie;
+    document.getElementById('bdPar').textContent    = cPar;
+    document.getElementById('bdBogey').textContent  = cBogey;
+    document.getElementById('bdDouble').textContent = cDouble;
+    document.getElementById('bdWorse').textContent  = cWorse;
+
+    const pctBanner = document.getElementById('percentileBanner');
+    if (played >= Math.ceil(n / 2)) {
+        const pct = getBetterThanPercent(totalP, n);
+        document.getElementById('pctNum').textContent = pct;
+        pctBanner.style.display = 'block';
+    } else {
+        pctBanner.style.display = 'none';
+    }
+}
+
+// ─── DUEL ───
+function updateDuelTotals() {
+    const club  = document.getElementById('club').value;
+    const mode  = document.getElementById('mode').value;
+    const phcp  = parseInt(document.getElementById('phcp-val').textContent);
+    const phcp2 = parseInt(document.getElementById('phcp2-val').textContent);
+    if (!mode) return;
+    const gd = courseData[club][mode];
+    const n  = gd.par.length;
+
+    let pts1=0, pts2=0, out1=0, out2=0, in1=0, in2=0, played=0;
+
+    for (let i = 0; i < n; i++) {
+        const inp1 = document.getElementById(`s-${i}`);
+        const inp2 = document.getElementById(`s2-${i}`);
+        if (!inp1 || !inp2) continue;
+        const v1 = parseInt(inp1.value);
+        const v2 = parseInt(inp2.value);
+        const si = gd.si[i];
+        const ex1 = extraForHole(phcp,  si, n);
+        const ex2 = extraForHole(phcp2, si, n);
+
+        // P1
+        if (!isNaN(v1) && v1 > 0) {
+            inp1.classList.add('filled');
+            const p = Math.max(0, 2 + (gd.par[i] + ex1) - v1);
+            const c = document.getElementById(`p-${i}`);
+            c.textContent = p; c.className = 'pts-cell pts-' + (p > 4 ? 4 : p);
+            pts1 += p;
+            if (mode === 'full 18') { if (i < 9) out1 += p; else in1 += p; }
+            else if (mode === 'front 9') out1 += p; else in1 += p;
+        } else {
+            inp1.classList.remove('filled');
+            document.getElementById(`p-${i}`).innerHTML = '&#8212;';
+        }
+        // P2
+        if (!isNaN(v2) && v2 > 0) {
+            inp2.classList.add('filled', 'p2-filled');
+            const p = Math.max(0, 2 + (gd.par[i] + ex2) - v2);
+            const c = document.getElementById(`p2-${i}`);
+            c.textContent = p; c.className = 'pts-cell pts-' + (p > 4 ? 4 : p);
+            pts2 += p;
+            if (mode === 'full 18') { if (i < 9) out2 += p; else in2 += p; }
+            else if (mode === 'front 9') out2 += p; else in2 += p;
+        } else {
+            inp2.classList.remove('filled', 'p2-filled');
+            document.getElementById(`p2-${i}`).innerHTML = '&#8212;';
+        }
+
+        if ((!isNaN(v1) && v1 > 0) || (!isNaN(v2) && v2 > 0)) played++;
+    }
+
+    const card = document.getElementById('duelSummaryCard');
+    if (played === 0) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+
+    const p1Name = playerShortName(document.getElementById('firstName').value.trim(),
+                                   document.getElementById('lastName').value.trim(), 'Speler 1');
+    const p2Name = playerShortName(document.getElementById('firstName2').value.trim(),
+                                   document.getElementById('lastName2').value.trim(), 'Speler 2');
+
+    document.getElementById('duelP1Name').textContent  = p1Name;
+    document.getElementById('duelP2Name').textContent  = p2Name;
+    document.getElementById('duelP1Score').textContent = pts1;
+    document.getElementById('duelP2Score').textContent = pts2;
+    document.getElementById('duelHoles').textContent   = `${played}/${n}`;
+    document.getElementById('duelDiff').textContent    = Math.abs(pts1 - pts2);
+
+    const leadEl = document.getElementById('duelLead');
+    if (pts1 === pts2) {
+        leadEl.innerHTML = `Gelijkspel &mdash; ${pts1} &mdash; ${pts2}`;
+    } else if (pts1 > pts2) {
+        leadEl.innerHTML = `<span class="lead-name">${escapeHtml(p1Name)}</span> leidt met ${pts1 - pts2} punt${(pts1-pts2)>1?'en':''}`;
+    } else {
+        leadEl.innerHTML = `<span class="lead-name">${escapeHtml(p2Name)}</span> leidt met ${pts2 - pts1} punt${(pts2-pts1)>1?'en':''}`;
+    }
+
+    if (mode === 'full 18') {
+        document.getElementById('duelP1OutLbl').textContent = `${p1Name} Uit / In`;
+        document.getElementById('duelP2OutLbl').textContent = `${p2Name} Uit / In`;
+        document.getElementById('duelP1Out').textContent = `${out1} / ${in1}`;
+        document.getElementById('duelP2Out').textContent = `${out2} / ${in2}`;
+    } else {
+        document.getElementById('duelP1OutLbl').textContent = `${p1Name} Totaal`;
+        document.getElementById('duelP2OutLbl').textContent = `${p2Name} Totaal`;
+        document.getElementById('duelP1Out').textContent = pts1;
+        document.getElementById('duelP2Out').textContent = pts2;
+    }
+}
+
+// ─── MATCH PLAY ───
+function updateMatchPlayTotals() {
+    const club  = document.getElementById('club').value;
+    const mode  = document.getElementById('mode').value;
+    const phcp  = parseInt(document.getElementById('phcp-val').textContent);
+    const phcp2 = parseInt(document.getElementById('phcp2-val').textContent);
+    if (!mode) return;
+    const gd = courseData[club][mode];
+    const n  = gd.par.length;
+
+    // Voor match play moeten we de extra-shots berekenen op basis van het VERSCHIL
+    // in playing handicap (standaard match play handicap allowance is 100% van het verschil).
+    // De lagere handicapper geeft slagen, de hogere ontvangt ze op de holes met laagste SI.
+    const diff = phcp - phcp2;
+    // Aantal slagen dat speler 2 krijgt = max(0, diff); P1 krijgt = max(0, -diff)
+    const p1Strokes = Math.max(0, -diff);  // P1 ontvangt slagen als zijn phcp < p2's
+    const p2Strokes = Math.max(0,  diff);  // P2 ontvangt slagen als zijn phcp > p1's
+
+    function strokesOnHole(strokesTotal, si, n) {
+        const base = Math.floor(strokesTotal / n);
+        const rem  = strokesTotal % n;
+        return base + (si <= rem ? 1 : 0);
+    }
+
+    let winsP1 = 0, winsP2 = 0, halved = 0;
+    let cumStatus = 0;            // +X = P1 up, -X = P2 up
+    let lastHoleWithScore = -1;
+    let playedHoles = 0;
+    mpHistory = [];
+
+    for (let i = 0; i < n; i++) {
+        const inp1 = document.getElementById(`s-${i}`);
+        const inp2 = document.getElementById(`s2-${i}`);
+        if (!inp1 || !inp2) continue;
+        const v1 = parseInt(inp1.value);
+        const v2 = parseInt(inp2.value);
+        const si = gd.si[i];
+
+        // styling
+        if (!isNaN(v1) && v1 > 0) inp1.classList.add('filled');     else inp1.classList.remove('filled');
+        if (!isNaN(v2) && v2 > 0) inp2.classList.add('filled', 'p2-filled'); else inp2.classList.remove('filled', 'p2-filled');
+
+        const e1 = strokesOnHole(p1Strokes, si, n);
+        const e2 = strokesOnHole(p2Strokes, si, n);
+
+        const both = (!isNaN(v1) && v1 > 0 && !isNaN(v2) && v2 > 0);
+
+        // Net score = bruto - ontvangen slagen
+        const net1 = (!isNaN(v1) && v1 > 0) ? v1 - e1 : null;
+        const net2 = (!isNaN(v2) && v2 > 0) ? v2 - e2 : null;
+
+        const n1El = document.getElementById(`net1-${i}`);
+        const n2El = document.getElementById(`net2-${i}`);
+        if (n1El) n1El.textContent = net1 !== null ? `net ${net1}${e1>0?' (-'+e1+')':''}` : 'net —';
+        if (n2El) n2El.textContent = net2 !== null ? `net ${net2}${e2>0?' (-'+e2+')':''}` : 'net —';
+
+        const mpr = document.getElementById(`mpr-${i}`);
+        const mps = document.getElementById(`mps-${i}`);
+
+        if (both) {
+            playedHoles++;
+            let result = 0; // 1=P1 wint, -1=P2 wint, 0=halved
+            if (net1 < net2) { result = 1; winsP1++; cumStatus++; }
+            else if (net2 < net1) { result = -1; winsP2++; cumStatus--; }
+            else { halved++; }
+            lastHoleWithScore = i;
+
+            if (mpr) {
+                if (result === 1)      { mpr.textContent = 'P1'; mpr.className = 'mp-result win-p1'; }
+                else if (result === -1){ mpr.textContent = 'P2'; mpr.className = 'mp-result win-p2'; }
+                else                   { mpr.textContent = 'AS'; mpr.className = 'mp-result halve'; }
+            }
+            const badgeCls = cumStatus === 0 ? 'as' : cumStatus > 0 ? 'p1' : 'p2';
+            const badgeTxt = cumStatus === 0 ? 'AS'
+                : cumStatus > 0 ? `${cumStatus} UP` : `${-cumStatus} UP`;
+            const statusTxt = cumStatus === 0 ? 'AS'
+                : cumStatus > 0 ? `${cumStatus} UP (P1)` : `${-cumStatus} UP (P2)`;
+            if (mps) mps.innerHTML = `<span class="mp-status-badge ${badgeCls}">${badgeTxt}</span>`;
+
+            mpHistory.push({ hole: i, p1Net: net1, p2Net: net2, result, cumStatus, statusTxt });
+        } else {
+            if (mpr) { mpr.textContent = '—'; mpr.className = 'mp-result'; }
+            if (mps) mps.innerHTML = '<span class="mp-status-badge empty">—</span>';
+        }
+    }
+
+    const card = document.getElementById('mpSummaryCard');
+    if (playedHoles === 0) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+
+    const p1Name = playerShortName(document.getElementById('firstName').value.trim(),
+                                   document.getElementById('lastName').value.trim(), 'Speler 1');
+    const p2Name = playerShortName(document.getElementById('firstName2').value.trim(),
+                                   document.getElementById('lastName2').value.trim(), 'Speler 2');
+
+    document.getElementById('mpWinsP1Lbl').textContent = `${p1Name} Holes`;
+    document.getElementById('mpWinsP2Lbl').textContent = `${p2Name} Holes`;
+    document.getElementById('mpWinsP1').textContent = winsP1;
+    document.getElementById('mpWinsP2').textContent = winsP2;
+    document.getElementById('mpHalved').textContent = halved;
+
+    const remaining = n - playedHoles;
+    document.getElementById('mpRemaining').textContent = remaining;
+
+    // Status berekenen
+    const banner   = document.getElementById('mpBanner');
+    const bigEl    = document.getElementById('mpStatusBig');
+    const leadEl   = document.getElementById('mpLeader');
+    const finalEl  = document.getElementById('mpFinal');
+    banner.classList.remove('dormie', 'closed');
+    finalEl.style.display = 'none';
+
+    const lead = Math.abs(cumStatus);
+    if (cumStatus === 0) {
+        bigEl.textContent = 'ALL SQUARE';
+        leadEl.textContent = remaining > 0 ? `Nog ${remaining} hole${remaining===1?'':'s'} te spelen` : 'Match getied';
+    } else {
+        const leaderName = cumStatus > 0 ? p1Name : p2Name;
+        bigEl.textContent = `${lead} UP`;
+        leadEl.innerHTML  = `<strong>${escapeHtml(leaderName)}</strong> ligt voor`;
+    }
+
+    // Match afgesloten? (lead > remaining)
+    if (lead > remaining && remaining >= 0 && playedHoles > 0) {
+        const leaderName = cumStatus > 0 ? p1Name : p2Name;
+        const playedBeforeEnd = lastHoleWithScore + 1; // 1-based aantal gespeelde holes
+        const holesLeftAfter  = n - playedBeforeEnd;
+        finalEl.textContent = `Match gewonnen: ${leaderName} ${lead}&${holesLeftAfter}`;
+        finalEl.style.display = 'block';
+        banner.classList.add('closed');
+    } else if (lead === remaining && remaining > 0) {
+        finalEl.textContent = `Dormie ${lead}`;
+        finalEl.style.display = 'block';
+        banner.classList.add('dormie');
+    } else if (remaining === 0) {
+        if (cumStatus === 0) {
+            finalEl.textContent = 'Match getied (Halved)';
+        } else {
+            const leaderName = cumStatus > 0 ? p1Name : p2Name;
+            finalEl.textContent = `Match gewonnen: ${leaderName} ${lead} UP`;
+        }
+        finalEl.style.display = 'block';
+        banner.classList.add('closed');
+    }
+
+    drawMpProgress();
+}
+
+// ── Match Play progression SVG ─────────────────────────────────────────────
+function drawMpProgress() {
+    const svg = document.getElementById('mpProgressSvg');
+    if (!svg) return;
+    const club = document.getElementById('club').value;
+    const mode = document.getElementById('mode').value;
+    const gd = courseData[club][mode];
+    const n = gd.par.length;
+
+    const W = 600, H = 130;
+    const padL = 36, padR = 12, padT = 14, padB = 24;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    // Max absolute status voor schaal (min 3)
+    let maxAbs = 3;
+    mpHistory.forEach(h => { if (Math.abs(h.cumStatus) > maxAbs) maxAbs = Math.abs(h.cumStatus); });
+
+    const xFor = (i) => padL + (plotW * (i + 1)) / n;
+    const x0   = padL;
+    const yFor = (s) => padT + plotH/2 - (s / maxAbs) * (plotH/2 - 4);
+
+    let parts = [];
+    // achtergrond zones
+    parts.push(`<rect x="${padL}" y="${padT}" width="${plotW}" height="${plotH/2}" fill="#e9f3e9"/>`);
+    parts.push(`<rect x="${padL}" y="${padT + plotH/2}" width="${plotW}" height="${plotH/2}" fill="#e9f0fa"/>`);
+    // middenlijn (AS)
+    parts.push(`<line x1="${padL}" y1="${padT + plotH/2}" x2="${W - padR}" y2="${padT + plotH/2}" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>`);
+
+    // y-labels
+    parts.push(`<text x="${padL - 6}" y="${padT + 4}" font-size="9" fill="#2d5a2d" text-anchor="end" font-family="monospace">+${maxAbs}</text>`);
+    parts.push(`<text x="${padL - 6}" y="${padT + plotH/2 + 3}" font-size="9" fill="#666" text-anchor="end" font-family="monospace">AS</text>`);
+    parts.push(`<text x="${padL - 6}" y="${padT + plotH - 1}" font-size="9" fill="#2980b9" text-anchor="end" font-family="monospace">-${maxAbs}</text>`);
+
+    // x-as hole labels
+    const labelEvery = n >= 18 ? 3 : 1;
+    for (let i = 0; i < n; i++) {
+        if (i % labelEvery !== 0 && i !== n - 1) continue;
+        const x = xFor(i);
+        const holeNum = (mode === 'back 9') ? (i + 10) : (i + 1);
+        parts.push(`<text x="${x}" y="${H - padB + 14}" font-size="9" fill="#666" text-anchor="middle" font-family="monospace">${holeNum}</text>`);
+    }
+
+    if (mpHistory.length > 0) {
+        // staplijn
+        let d = `M ${x0} ${yFor(0)}`;
+        let prevX = x0, prevY = yFor(0);
+        mpHistory.forEach(h => {
+            const x = xFor(h.hole);
+            const y = yFor(h.cumStatus);
+            d += ` L ${x} ${prevY} L ${x} ${y}`;
+            prevX = x; prevY = y;
+        });
+        // gevuld pad onder/boven de lijn t.o.v. as
+        const lastX = prevX;
+        const baseY = padT + plotH/2;
+        let dFill = `M ${x0} ${baseY}` ;
+        let pX = x0, pY = baseY;
+        mpHistory.forEach(h => {
+            const x = xFor(h.hole);
+            const y = yFor(h.cumStatus);
+            dFill += ` L ${x} ${pY} L ${x} ${y}`;
+            pX = x; pY = y;
+        });
+        dFill += ` L ${lastX} ${baseY} Z`;
+        parts.push(`<path d="${dFill}" fill="#2d5a2d" fill-opacity="0.18"/>`);
+        parts.push(`<path d="${d}" fill="none" stroke="#2d5a2d" stroke-width="2.2" stroke-linejoin="round"/>`);
+
+        // punten per hole, gekleurd
+        mpHistory.forEach(h => {
+            const x = xFor(h.hole);
+            const y = yFor(h.cumStatus);
+            const color = h.result === 1 ? '#2d5a2d' : h.result === -1 ? '#2980b9' : '#888';
+            parts.push(`<circle cx="${x}" cy="${y}" r="3" fill="${color}"/>`);
+        });
+    }
+
+    svg.innerHTML = parts.join('');
+}
+
+// ============================================================================
+// ── PDF: SOLO ────────────────────────────────────────────────────────────────
+// ============================================================================
+async function fetchFlag(nat) {
+    try {
+        const resp = await fetch(`https://flagcdn.com/w40/${nat}.png`);
+        if (resp.ok) {
+            const blob = await resp.blob();
+            return await new Promise((res, rej) => {
+                const r = new FileReader();
+                r.onloadend = () => res(r.result);
+                r.onerror   = rej;
+                r.readAsDataURL(blob);
+            });
+        }
+    } catch (e) { /* skip */ }
+    return null;
+}
+
+function downloadPDF() {
+    if (compMode === 'duel')      return downloadDuelPDF();
+    if (compMode === 'matchplay') return downloadMatchPlayPDF();
+    return downloadSoloPDF();
+}
+
+async function downloadSoloPDF() {
+    if (!window.jspdf) { alert('PDF-bibliotheek nog niet geladen.'); return; }
+    const btn = document.getElementById('btnDownload');
+    btn.disabled = true;
+    btn.textContent = 'Bezig met genereren…';
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const club  = document.getElementById('club').value;
+        const mode  = document.getElementById('mode').value;
+        const teeN  = document.getElementById('tee').value;
+        const hcp   = parseFloat(document.getElementById('hcp').value) || 0;
+        const phcp  = parseInt(document.getElementById('phcp-val').textContent);
+        const fn    = document.getElementById('firstName').value.trim();
+        const ln    = document.getElementById('lastName').value.trim();
+        const nat   = document.getElementById('nationality').value;
+        const dateV = document.getElementById('playDate').value;
+
+        const gd   = courseData[club][mode];
+        const n    = gd.par.length;
+        const playerName = playerNameFmt(fn, ln, 'Speler');
+        const dateStr    = dateV
+            ? new Date(dateV).toLocaleDateString('nl-BE', {day:'numeric',month:'long',year:'numeric'})
+            : new Date().toLocaleDateString('nl-BE', {day:'numeric',month:'long',year:'numeric'});
+
+        const flagImg = await fetchFlag(nat);
+        const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pw   = doc.internal.pageSize.getWidth();
+
+        doc.setFillColor(26, 46, 26);
+        doc.rect(0, 0, pw, 52, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.setTextColor(250, 248, 243);
+        doc.text('Stableford Scorekaart', pw / 2, 13, { align: 'center' });
+
+        doc.setFontSize(10);
+        doc.setTextColor(200, 168, 75);
+        doc.text(gd.name, pw / 2, 21, { align: 'center' });
+
+        doc.setFontSize(8.5);
+        doc.setTextColor(190, 190, 190);
+        doc.setFont('helvetica', 'normal');
+        doc.text(`${teeN.charAt(0).toUpperCase() + teeN.slice(1)} tee  |  HCP: ${hcp}  |  PHCP: ${phcp}  |  ${dateStr}`,
+                 pw / 2, 29, { align: 'center' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(250, 248, 243);
+
+        if (flagImg) {
+            const fw = 10, fh = 7;
+            const tw = doc.getTextWidth(playerName);
+            const gap = 3;
+            const startX = (pw - tw - gap - fw) / 2;
+            doc.text(playerName, startX, 42);
+            doc.addImage(flagImg, 'PNG', startX + tw + gap, 42 - fh + 1, fw, fh);
+        } else {
+            doc.text(playerName, pw / 2, 42, { align: 'center' });
+        }
+
+        const rows = [];
+        let outPts = 0, inPts = 0, outS = 0, inS = 0;
+        function ptsStyle(pts) {
+            if (typeof pts !== 'number') return {};
+            if (pts === 0) return { textColor: [192, 57, 43] };
+            if (pts === 1) return { textColor: [140, 140, 140] };
+            if (pts === 3) return { textColor: [60, 150, 60] };
+            if (pts >= 4)  return { textColor: [200, 168, 75], fontStyle: 'bold' };
+            return {};
+        }
+        for (let i = 0; i < n; i++) {
+            const si    = gd.si[i];
+            const extra = extraForHole(phcp, si, n);
+            const hole  = (mode === 'back 9') ? (i + 10) : (i + 1);
+            const sinp  = document.getElementById(`s-${i}`);
+            const score = parseInt(sinp?.value) || 0;
+            const pts   = score > 0 ? Math.max(0, 2 + (gd.par[i] + extra) - score) : null;
+            rows.push([ hole, gd.par[i], si, extra > 0 ? `+${extra}` : extra, score || '—',
+                pts !== null ? { content: pts, styles: { fontStyle: 'bold', ...ptsStyle(pts) } }
+                             : { content: '—', styles: { textColor: [180, 180, 180] } } ]);
+            if (score > 0 && pts !== null) {
+                if (mode === 'full 18') { if (i < 9) { outPts += pts; outS += score; } else { inPts += pts; inS += score; } }
+                else if (mode === 'front 9') { outPts += pts; outS += score; }
+                else { inPts += pts; inS += score; }
+            }
+        }
+        const totalPts = outPts + inPts;
+        const totalS   = outS + inS;
+        const footRows = mode === 'full 18'
+            ? [ ['Uit','','','', outS || '—', { content: outPts, styles:{fontStyle:'bold'} }],
+                ['In', '','','', inS  || '—', { content: inPts,  styles:{fontStyle:'bold'} }],
+                ['Totaal','','','', totalS || '—', { content: totalPts, styles:{fontStyle:'bold', fontSize:11, textColor:[200,168,75]} }] ]
+            : [ ['Totaal','','','', totalS || '—', { content: totalPts, styles:{fontStyle:'bold', fontSize:11, textColor:[200,168,75]} }] ];
+
+        doc.autoTable({
+            head: [['Hole','Par','SI','Extra','Slagen','Punten']],
+            body: rows, foot: footRows, startY: 57,
+            styles: { fontSize: 9, cellPadding: 3, halign: 'center', font: 'helvetica' },
+            headStyles: { fillColor: [45, 90, 45], textColor: 255, fontStyle: 'bold' },
+            footStyles: { fillColor: [26, 46, 26], textColor: 255, fontStyle: 'bold' },
+            columnStyles: {
+                0: { halign: 'left', cellWidth: 14 }, 1: { cellWidth: 12 }, 2: { cellWidth: 12 },
+                3: { cellWidth: 16 }, 5: { fontStyle: 'bold', cellWidth: 18 }
+            },
+            alternateRowStyles: { fillColor: [245, 243, 238] }
+        });
+
+        const bdEagle  = parseInt(document.getElementById('bdEagle').textContent)  || 0;
+        const bdBirdie = parseInt(document.getElementById('bdBirdie').textContent) || 0;
+        const bdPar    = parseInt(document.getElementById('bdPar').textContent)    || 0;
+        const bdBogey  = parseInt(document.getElementById('bdBogey').textContent)  || 0;
+        const bdDouble = parseInt(document.getElementById('bdDouble').textContent) || 0;
+        const bdWorse  = parseInt(document.getElementById('bdWorse').textContent)  || 0;
+        const bdItems = [
+            { label: 'Eagle+', count: bdEagle,  color: [168, 138, 50] },
+            { label: 'Birdie', count: bdBirdie, color: [45,  130,  45] },
+            { label: 'Par',    count: bdPar,    color: [60,   60,  60] },
+            { label: 'Bogey',  count: bdBogey,  color: [184, 104,  32] },
+            { label: 'Dubbel', count: bdDouble, color: [192,  57,  43] },
+            { label: 'Erger',  count: bdWorse,  color: [139,   0,   0] },
+        ];
+        const bdStartY = doc.lastAutoTable.finalY + 7;
+        const bdBoxW   = (pw - 28) / bdItems.length;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(140, 140, 140);
+        doc.text('SCORE VERDELING', 14, bdStartY + 4);
+        bdItems.forEach((item, idx) => {
+            const bx = 14 + idx * bdBoxW, by = bdStartY + 7;
+            doc.setFillColor(250, 248, 243); doc.rect(bx, by, bdBoxW - 2, 17, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...item.color);
+            doc.text(String(item.count), bx + (bdBoxW - 2) / 2, by + 9.5, { align: 'center' });
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(120, 120, 120);
+            doc.text(item.label, bx + (bdBoxW - 2) / 2, by + 15, { align: 'center' });
+        });
+
+        const fy = bdStartY + 31;
+        const played = rows.filter(r => r[4] !== '—').length;
+        if (played >= Math.ceil(n / 2)) {
+            const pct = getBetterThanPercent(totalPts, n);
+            doc.setFillColor(26, 46, 26);
+            doc.roundedRect(14, fy, pw - 28, 22, 3, 3, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(200, 168, 75);
+            doc.text(`Beter dan ${pct}% van de spelers`, pw / 2, fy + 9, { align: 'center' });
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(160, 160, 160);
+            doc.text('Gebaseerd op gemiddelde clubcompetitie verdeling', pw / 2, fy + 17, { align: 'center' });
+        }
+
+        const ph = doc.internal.pageSize.getHeight();
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(160, 160, 160);
+        doc.text('Stableford Calculator', pw / 2, ph - 8, { align: 'center' });
+
+        const safeName = playerName.replace(/[^a-z0-9]/gi, '-');
+        doc.save(`scorekaart-${safeName}-${dateV || 'datum'}.pdf`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '&#8659; Scorekaart downloaden als PDF';
+    }
+}
+
+// ============================================================================
+// ── PDF: DUEL ────────────────────────────────────────────────────────────────
+// ============================================================================
+async function downloadDuelPDF() {
+    if (!window.jspdf) { alert('PDF-bibliotheek nog niet geladen.'); return; }
+    const btn = document.getElementById('btnDownloadDuel');
+    btn.disabled = true;
+    btn.textContent = 'Bezig met genereren…';
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const club  = document.getElementById('club').value;
+        const mode  = document.getElementById('mode').value;
+        const teeN  = document.getElementById('tee').value;
+        const teeN2 = document.getElementById('tee2').value;
+        const dateV = document.getElementById('playDate').value;
+
+        const fn1 = document.getElementById('firstName').value.trim();
+        const ln1 = document.getElementById('lastName').value.trim();
+        const fn2 = document.getElementById('firstName2').value.trim();
+        const ln2 = document.getElementById('lastName2').value.trim();
+        const nat1 = document.getElementById('nationality').value;
+        const nat2 = document.getElementById('nationality2').value;
+        const hcp1 = parseFloat(document.getElementById('hcp').value) || 0;
+        const hcp2 = parseFloat(document.getElementById('hcp2').value) || 0;
+        const phcp1 = parseInt(document.getElementById('phcp-val').textContent);
+        const phcp2 = parseInt(document.getElementById('phcp2-val').textContent);
+
+        const p1Name = playerNameFmt(fn1, ln1, 'Speler 1');
+        const p2Name = playerNameFmt(fn2, ln2, 'Speler 2');
+
+        const gd = courseData[club][mode];
+        const n  = gd.par.length;
+
+        const dateStr = dateV
+            ? new Date(dateV).toLocaleDateString('nl-BE', {day:'numeric',month:'long',year:'numeric'})
+            : new Date().toLocaleDateString('nl-BE', {day:'numeric',month:'long',year:'numeric'});
+
+        const [flag1, flag2] = await Promise.all([fetchFlag(nat1), fetchFlag(nat2)]);
+
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pw  = doc.internal.pageSize.getWidth();
+
+        // Header
+        doc.setFillColor(26, 46, 26);
+        doc.rect(0, 0, pw, 60, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(250, 248, 243);
+        doc.text('Stableford Duel', pw / 2, 13, { align: 'center' });
+        doc.setFontSize(10); doc.setTextColor(200, 168, 75);
+        doc.text(gd.name, pw / 2, 21, { align: 'center' });
+        doc.setFontSize(8.5); doc.setTextColor(190, 190, 190); doc.setFont('helvetica', 'normal');
+        doc.text(dateStr, pw / 2, 28, { align: 'center' });
+
+        // 2 spelers naast elkaar (elk met eigen teebox)
+        const halfW = pw / 2;
+        function drawPlayer(name, hcpV, phcpV, teeName, flag, color, cx) {
+            doc.setFillColor(...color);
+            doc.roundedRect(cx - 38, 34, 76, 24, 3, 3, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
+            if (flag) {
+                const tw = doc.getTextWidth(name);
+                doc.text(name, cx - tw/2 - 6, 42);
+                doc.addImage(flag, 'PNG', cx + tw/2 - 4, 38, 8, 5.5);
+            } else {
+                doc.text(name, cx, 42, { align: 'center' });
+            }
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(220,220,220);
+            doc.text(`HCP ${hcpV}  /  Speelhcp ${phcpV}`, cx, 49, { align: 'center' });
+            doc.setFontSize(7.5); doc.setTextColor(200, 168, 75);
+            doc.text(`${teeName.charAt(0).toUpperCase() + teeName.slice(1)} tee`, cx, 55, { align: 'center' });
+        }
+        drawPlayer(p1Name, hcp1, phcp1, teeN,  flag1, [45, 90, 45],   halfW / 2);
+        drawPlayer(p2Name, hcp2, phcp2, teeN2, flag2, [41, 128, 185], halfW + halfW / 2);
+
+        // Tabel
+        const rows = [];
+        let out1=0, in1=0, out2=0, in2=0;
+        for (let i = 0; i < n; i++) {
+            const si = gd.si[i];
+            const e1 = extraForHole(phcp1, si, n);
+            const e2 = extraForHole(phcp2, si, n);
+            const hole = (mode === 'back 9') ? (i + 10) : (i + 1);
+            const s1 = parseInt(document.getElementById(`s-${i}`)?.value) || 0;
+            const s2 = parseInt(document.getElementById(`s2-${i}`)?.value) || 0;
+            const p1 = s1 > 0 ? Math.max(0, 2 + (gd.par[i] + e1) - s1) : null;
+            const p2 = s2 > 0 ? Math.max(0, 2 + (gd.par[i] + e2) - s2) : null;
+            if (p1 !== null) { if (mode === 'full 18') { if (i < 9) out1 += p1; else in1 += p1; } else if (mode === 'front 9') out1 += p1; else in1 += p1; }
+            if (p2 !== null) { if (mode === 'full 18') { if (i < 9) out2 += p2; else in2 += p2; } else if (mode === 'front 9') out2 += p2; else in2 += p2; }
+
+            // markeer winnaar per hole
+            const p1Wins = (p1 !== null && p2 !== null && p1 > p2);
+            const p2Wins = (p1 !== null && p2 !== null && p2 > p1);
+            rows.push([
+                hole, gd.par[i], si,
+                s1 || '—',
+                p1 !== null ? { content: p1, styles: { fontStyle: 'bold', textColor: p1Wins?[45,90,45]:[60,60,60], fillColor: p1Wins?[230,245,230]:undefined } } : '—',
+                s2 || '—',
+                p2 !== null ? { content: p2, styles: { fontStyle: 'bold', textColor: p2Wins?[41,128,185]:[60,60,60], fillColor: p2Wins?[230,240,250]:undefined } } : '—',
+            ]);
+        }
+        const t1 = out1 + in1, t2 = out2 + in2;
+        const winner = t1 > t2 ? `${p1Name} wint met ${t1 - t2} pt`
+                     : t2 > t1 ? `${p2Name} wint met ${t2 - t1} pt`
+                     : 'Gelijkspel';
+
+        const footRows = mode === 'full 18'
+            ? [ ['Uit','','', '', { content: out1, styles:{fontStyle:'bold'} }, '', { content: out2, styles:{fontStyle:'bold'} }],
+                ['In', '','', '', { content: in1,  styles:{fontStyle:'bold'} }, '', { content: in2,  styles:{fontStyle:'bold'} }],
+                ['Totaal','','','', { content: t1, styles:{fontStyle:'bold', fontSize:11, textColor: t1>=t2?[200,168,75]:[140,140,140]} },
+                                 '', { content: t2, styles:{fontStyle:'bold', fontSize:11, textColor: t2>=t1?[200,168,75]:[140,140,140]} }] ]
+            : [ ['Totaal','','','', { content: t1, styles:{fontStyle:'bold', fontSize:11, textColor: t1>=t2?[200,168,75]:[140,140,140]} },
+                                 '', { content: t2, styles:{fontStyle:'bold', fontSize:11, textColor: t2>=t1?[200,168,75]:[140,140,140]} }] ];
+
+        doc.autoTable({
+            head: [['Hole','Par','SI', `${p1Name} Slagen`, 'Pts', `${p2Name} Slagen`, 'Pts']],
+            body: rows, foot: footRows, startY: 68,
+            margin: { left: 12, right: 12, top: 12, bottom: 12 },
+            styles: { fontSize: 8.2, cellPadding: 2, halign: 'center', font: 'helvetica' },
+            headStyles: { fillColor: [45, 90, 45], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+            footStyles: { fillColor: [26, 46, 26], textColor: 255, fontStyle: 'bold' },
+            columnStyles: {
+                0: { halign: 'left', cellWidth: 14 }, 1: { cellWidth: 12 }, 2: { cellWidth: 12 },
+                3: { cellWidth: 38 }, 4: { cellWidth: 18, fontStyle: 'bold' },
+                5: { cellWidth: 38 }, 6: { cellWidth: 18, fontStyle: 'bold' }
+            },
+            alternateRowStyles: { fillColor: [245, 243, 238] },
+            pageBreak: 'auto',
+            rowPageBreak: 'avoid'
+        });
+
+        // Winner banner — naar nieuwe pagina als hij niet meer past
+        const pageH = doc.internal.pageSize.getHeight();
+        let wy = doc.lastAutoTable.finalY + 8;
+        if (wy + 26 + 14 > pageH) {
+            doc.addPage();
+            wy = 18;
+        }
+        doc.setFillColor(26, 46, 26);
+        doc.roundedRect(14, wy, pw - 28, 26, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(200,168,75);
+        doc.text('UITSLAG', pw / 2, wy + 7, { align: 'center' });
+        doc.setFontSize(15); doc.setTextColor(255, 255, 255);
+        doc.text(winner, pw / 2, wy + 17, { align: 'center' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(160,160,160);
+        doc.text(`${p1Name}: ${t1} pt   |   ${p2Name}: ${t2} pt`, pw / 2, wy + 23, { align: 'center' });
+
+        // Footer
+        const ph = doc.internal.pageSize.getHeight();
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(160, 160, 160);
+        doc.text('Stableford Calculator — Duel', pw / 2, ph - 8, { align: 'center' });
+
+        const safe = `${p1Name}-vs-${p2Name}`.replace(/[^a-z0-9]/gi, '-');
+        doc.save(`duel-${safe}-${dateV || 'datum'}.pdf`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '&#8659; Duel scorekaart downloaden als PDF';
+    }
+}
+
+// ============================================================================
+// ── PDF: MATCH PLAY ─────────────────────────────────────────────────────────
+// ============================================================================
+async function downloadMatchPlayPDF() {
+    if (!window.jspdf) { alert('PDF-bibliotheek nog niet geladen.'); return; }
+    const btn = document.getElementById('btnDownloadMp');
+    btn.disabled = true;
+    btn.textContent = 'Bezig met genereren…';
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const club  = document.getElementById('club').value;
+        const mode  = document.getElementById('mode').value;
+        const teeN  = document.getElementById('tee').value;
+        const teeN2 = document.getElementById('tee2').value;
+        const dateV = document.getElementById('playDate').value;
+
+        const fn1 = document.getElementById('firstName').value.trim();
+        const ln1 = document.getElementById('lastName').value.trim();
+        const fn2 = document.getElementById('firstName2').value.trim();
+        const ln2 = document.getElementById('lastName2').value.trim();
+        const nat1 = document.getElementById('nationality').value;
+        const nat2 = document.getElementById('nationality2').value;
+        const hcp1 = parseFloat(document.getElementById('hcp').value) || 0;
+        const hcp2 = parseFloat(document.getElementById('hcp2').value) || 0;
+        const phcp1 = parseInt(document.getElementById('phcp-val').textContent);
+        const phcp2 = parseInt(document.getElementById('phcp2-val').textContent);
+
+        const p1Name = playerNameFmt(fn1, ln1, 'Speler 1');
+        const p2Name = playerNameFmt(fn2, ln2, 'Speler 2');
+
+        const gd = courseData[club][mode];
+        const n  = gd.par.length;
+
+        const dateStr = dateV
+            ? new Date(dateV).toLocaleDateString('nl-BE', {day:'numeric',month:'long',year:'numeric'})
+            : new Date().toLocaleDateString('nl-BE', {day:'numeric',month:'long',year:'numeric'});
+
+        const [flag1, flag2] = await Promise.all([fetchFlag(nat1), fetchFlag(nat2)]);
+
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pw  = doc.internal.pageSize.getWidth();
+
+        // Header
+        doc.setFillColor(26, 46, 26);
+        doc.rect(0, 0, pw, 60, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor(250, 248, 243);
+        doc.text('Match Play Scorekaart', pw / 2, 13, { align: 'center' });
+        doc.setFontSize(10); doc.setTextColor(200, 168, 75);
+        doc.text(gd.name, pw / 2, 21, { align: 'center' });
+        doc.setFontSize(8.5); doc.setTextColor(190, 190, 190); doc.setFont('helvetica', 'normal');
+        doc.text(dateStr, pw / 2, 28, { align: 'center' });
+
+        const halfW = pw / 2;
+        function drawPlayer(name, hcpV, phcpV, teeName, flag, color, cx) {
+            doc.setFillColor(...color);
+            doc.roundedRect(cx - 38, 34, 76, 24, 3, 3, 'F');
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(255,255,255);
+            if (flag) {
+                const tw = doc.getTextWidth(name);
+                doc.text(name, cx - tw/2 - 6, 42);
+                doc.addImage(flag, 'PNG', cx + tw/2 - 4, 38, 8, 5.5);
+            } else {
+                doc.text(name, cx, 42, { align: 'center' });
+            }
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(220,220,220);
+            doc.text(`HCP ${hcpV}  /  Speelhcp ${phcpV}`, cx, 49, { align: 'center' });
+            doc.setFontSize(7.5); doc.setTextColor(200, 168, 75);
+            doc.text(`${teeName.charAt(0).toUpperCase() + teeName.slice(1)} tee`, cx, 55, { align: 'center' });
+        }
+        drawPlayer(p1Name, hcp1, phcp1, teeN,  flag1, [45, 90, 45],   halfW / 2);
+        drawPlayer(p2Name, hcp2, phcp2, teeN2, flag2, [41, 128, 185], halfW + halfW / 2);
+
+        // Tabel met bruto + net + winnaar + stand
+        const diff = phcp1 - phcp2;
+        const p1Strokes = Math.max(0, -diff);
+        const p2Strokes = Math.max(0,  diff);
+        function strokesOnHole(strokesTotal, si) {
+            const base = Math.floor(strokesTotal / n);
+            const rem  = strokesTotal % n;
+            return base + (si <= rem ? 1 : 0);
+        }
+
+        const rows = [];
+        let winsP1 = 0, winsP2 = 0, halved = 0, cum = 0, lastWith = -1, played = 0;
+        const historyForChart = [];
+
+        for (let i = 0; i < n; i++) {
+            const si = gd.si[i];
+            const hole = (mode === 'back 9') ? (i + 10) : (i + 1);
+            const v1 = parseInt(document.getElementById(`s-${i}`)?.value) || 0;
+            const v2 = parseInt(document.getElementById(`s2-${i}`)?.value) || 0;
+            const e1 = strokesOnHole(p1Strokes, si);
+            const e2 = strokesOnHole(p2Strokes, si);
+            const net1 = v1 > 0 ? v1 - e1 : null;
+            const net2 = v2 > 0 ? v2 - e2 : null;
+            let resCol = '—', resColor = [120,120,120];
+            let standTxt = '—';
+            let standFill = null;
+            let result = null;
+            if (net1 !== null && net2 !== null) {
+                played++; lastWith = i;
+                if (net1 < net2) { winsP1++; cum++; resCol = p1Name; resColor = [45,90,45];   result = 1; }
+                else if (net2 < net1){ winsP2++; cum--; resCol = p2Name; resColor = [41,128,185]; result = -1; }
+                else { halved++; resCol = 'AS'; resColor = [120,120,120]; result = 0; }
+                standTxt = cum === 0 ? 'AS' : (cum > 0 ? `${cum} UP` : `${-cum} UP`);
+                standFill = cum > 0 ? [45,90,45] : cum < 0 ? [41,128,185] : [136,136,136];
+                historyForChart.push({ hole: i, cum, result });
+            }
+            const standCell = standFill
+                ? { content: standTxt, styles: { fillColor: standFill, textColor: [255,255,255], fontStyle: 'bold' } }
+                : { content: '—', styles: { textColor: [180,180,180] } };
+            rows.push([
+                hole, gd.par[i], si,
+                v1 || '—',
+                net1 !== null ? `${net1}${e1>0?' (-'+e1+')':''}` : '—',
+                v2 || '—',
+                net2 !== null ? `${net2}${e2>0?' (-'+e2+')':''}` : '—',
+                { content: resCol, styles: { fontStyle: 'bold', textColor: resColor } },
+                standCell
+            ]);
+        }
+
+        doc.autoTable({
+            head: [['Hole','Par','SI', `${p1Name} bruto`, 'net', `${p2Name} bruto`, 'net', 'Winnaar', 'Stand']],
+            body: rows, startY: 68,
+            margin: { left: 10, right: 10, top: 12, bottom: 12 },
+            styles: { fontSize: 7.6, cellPadding: 1.8, halign: 'center', font: 'helvetica' },
+            headStyles: { fillColor: [45, 90, 45], textColor: 255, fontStyle: 'bold', fontSize: 7.2 },
+            columnStyles: {
+                0: { halign: 'left', cellWidth: 11 }, 1: { cellWidth: 10 }, 2: { cellWidth: 10 },
+                3: { cellWidth: 26 }, 4: { cellWidth: 16 },
+                5: { cellWidth: 26 }, 6: { cellWidth: 16 },
+                7: { cellWidth: 36, fontStyle: 'bold' }, 8: { cellWidth: 24 }
+            },
+            alternateRowStyles: { fillColor: [245, 243, 238] },
+            pageBreak: 'auto',
+            rowPageBreak: 'avoid'
+        });
+
+        // Status + uitslag banner
+        const remaining = n - played;
+        const lead = Math.abs(cum);
+        let finalTxt = '';
+        if (played > 0) {
+            if (lead > remaining) {
+                const leaderName = cum > 0 ? p1Name : p2Name;
+                const playedBeforeEnd = lastWith + 1;
+                const holesLeftAfter  = n - playedBeforeEnd;
+                finalTxt = `${leaderName} wint ${lead}&${holesLeftAfter}`;
+            } else if (remaining === 0) {
+                finalTxt = cum === 0 ? 'Halved (Match getied)' :
+                    `${cum > 0 ? p1Name : p2Name} wint ${lead} UP`;
+            } else if (lead === remaining && remaining > 0) {
+                finalTxt = `Dormie ${lead}  —  ${cum > 0 ? p1Name : p2Name}`;
+            } else if (cum === 0) {
+                finalTxt = `All Square  —  nog ${remaining} hole${remaining===1?'':'s'} te spelen`;
+            } else {
+                finalTxt = `${cum > 0 ? p1Name : p2Name} ${lead} UP  —  nog ${remaining} te spelen`;
+            }
+        } else {
+            finalTxt = 'Nog niets gespeeld';
+        }
+
+        // Check of banner + grafiek nog op huidige pagina passen.
+        // Banner = 28mm + 6mm gap, grafiek = 70mm + 12mm marge = 116mm totaal.
+        const pageH = doc.internal.pageSize.getHeight();
+        const NEEDED_BELOW = 28 + 6 + 70 + 14;   // banner+gap+chart+footer
+        let wy = doc.lastAutoTable.finalY + 6;
+        if (wy + NEEDED_BELOW > pageH) {
+            doc.addPage();
+            wy = 18;
+        }
+
+        doc.setFillColor(26, 46, 26);
+        doc.roundedRect(14, wy, pw - 28, 28, 3, 3, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(200,168,75);
+        doc.text('MATCH UITSLAG', pw / 2, wy + 7, { align: 'center' });
+        doc.setFontSize(14); doc.setTextColor(255, 255, 255);
+        doc.text(finalTxt, pw / 2, wy + 17, { align: 'center' });
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(160,160,160);
+        doc.text(`Holes gewonnen — ${p1Name}: ${winsP1}   |   ${p2Name}: ${winsP2}   |   Halved: ${halved}`,
+                 pw / 2, wy + 24, { align: 'center' });
+
+        // ── PROGRESSION CHART ──
+        let cy = wy + 36;
+        const cw = pw - 28, ch = 70;
+        // Als grafiek niet meer past, ook naar nieuwe pagina
+        if (cy + ch + 14 > pageH) {
+            doc.addPage();
+            cy = 18;
+        }
+        const padL = 18, padR = 6, padT = 8, padB = 16;
+        const plotW = cw - padL - padR;
+        const plotH = ch - padT - padB;
+
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(14, cy, cw, ch, 3, 3, 'F');
+        doc.setDrawColor(220, 220, 220);
+        doc.roundedRect(14, cy, cw, ch, 3, 3);
+
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(140, 140, 140);
+        doc.text('VERLOOP VAN DE MATCH', pw / 2, cy + 6, { align: 'center' });
+
+        let maxAbs = 3;
+        historyForChart.forEach(h => { if (Math.abs(h.cum) > maxAbs) maxAbs = Math.abs(h.cum); });
+
+        const ox = 14 + padL;
+        const oy = cy + padT;
+        const xFor = (i) => ox + (plotW * (i + 1)) / n;
+        const yMid = oy + plotH / 2;
+        const yFor = (s) => yMid - (s / maxAbs) * (plotH / 2 - 2);
+
+        // Zones
+        doc.setFillColor(233, 243, 233);
+        doc.rect(ox, oy, plotW, plotH / 2, 'F');
+        doc.setFillColor(233, 240, 250);
+        doc.rect(ox, yMid, plotW, plotH / 2, 'F');
+
+        // Midline
+        doc.setDrawColor(160, 160, 160);
+        doc.setLineDashPattern([1, 1], 0);
+        doc.line(ox, yMid, ox + plotW, yMid);
+        doc.setLineDashPattern([], 0);
+
+        // Y labels
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(6); doc.setTextColor(45,90,45);
+        doc.text(`+${maxAbs}`, ox - 2, oy + 3, { align: 'right' });
+        doc.setTextColor(120,120,120);
+        doc.text('AS', ox - 2, yMid + 1.5, { align: 'right' });
+        doc.setTextColor(41,128,185);
+        doc.text(`-${maxAbs}`, ox - 2, oy + plotH - 1, { align: 'right' });
+
+        // X labels (hole nummers)
+        const labelEvery = n >= 18 ? 3 : 1;
+        doc.setFontSize(6); doc.setTextColor(110,110,110);
+        for (let i = 0; i < n; i++) {
+            if (i % labelEvery !== 0 && i !== n - 1) continue;
+            const x = xFor(i);
+            const holeNum = (mode === 'back 9') ? (i + 10) : (i + 1);
+            doc.text(String(holeNum), x, oy + plotH + 5, { align: 'center' });
+        }
+
+        // Lijn
+        if (historyForChart.length > 0) {
+            // Gevuld pad
+            doc.setFillColor(45, 90, 45);
+            doc.setGState && doc.setGState(new doc.GState({ opacity: 0.16 }));
+            let pX = ox, pY = yMid;
+            const fillPath = [];
+            fillPath.push([ox, yMid]);
+            historyForChart.forEach(h => {
+                const x = xFor(h.hole);
+                const y = yFor(h.cum);
+                fillPath.push([x, pY]);
+                fillPath.push([x, y]);
+                pX = x; pY = y;
+            });
+            fillPath.push([pX, yMid]);
+            // teken polygoon
+            doc.lines(
+                fillPath.slice(1).map((p, idx) => [p[0] - fillPath[idx][0], p[1] - fillPath[idx][1]]),
+                fillPath[0][0], fillPath[0][1], [1,1], 'F', true
+            );
+            doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
+
+            // Stap-lijn bovenop
+            doc.setDrawColor(45, 90, 45);
+            doc.setLineWidth(0.7);
+            let prevX = ox, prevY = yMid;
+            historyForChart.forEach(h => {
+                const x = xFor(h.hole);
+                const y = yFor(h.cum);
+                doc.line(prevX, prevY, x, prevY);
+                doc.line(x, prevY, x, y);
+                prevX = x; prevY = y;
+            });
+            doc.setLineWidth(0.2);
+
+            // Punten gekleurd
+            historyForChart.forEach(h => {
+                const x = xFor(h.hole);
+                const y = yFor(h.cum);
+                if (h.result === 1)      doc.setFillColor(45, 90, 45);
+                else if (h.result === -1)doc.setFillColor(41, 128, 185);
+                else                     doc.setFillColor(140, 140, 140);
+                doc.circle(x, y, 1.1, 'F');
+            });
+        }
+
+        // Footer
+        const ph = doc.internal.pageSize.getHeight();
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(160, 160, 160);
+        doc.text('Stableford Calculator — Match Play', pw / 2, ph - 8, { align: 'center' });
+
+        const safe = `${p1Name}-vs-${p2Name}`.replace(/[^a-z0-9]/gi, '-');
+        doc.save(`matchplay-${safe}-${dateV || 'datum'}.pdf`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '&#8659; Match Play kaart downloaden als PDF';
+    }
+}
+
+// ── Listeners voor naam-velden zodat headers live updaten ──────────────────
+function attachNameListeners() {
+    ['firstName','lastName','firstName2','lastName2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', () => {
+            if (compMode !== 'solo') renderTable();
+        });
+    });
+}
+
+// ── Init ────────────────────────────────────────────────────────────────────
+window.addEventListener('load', function () {
+    document.getElementById('playDate').value = new Date().toISOString().split('T')[0];
+    populateTees();
+    attachNameListeners();
+    renderTable();
+});
+
+</script>
+</body>
+</html>
